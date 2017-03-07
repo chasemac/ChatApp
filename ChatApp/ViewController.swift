@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import Firebase
 
 class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
 
@@ -21,7 +22,21 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         tableView.delegate = self
         tableView.dataSource = self
         
-        self.msgs = []
+        DataService.ds.MSGS_DB_REF.queryOrdered(byChild: "text").observe(.value, with: { (snapshot) in
+            
+            self.msgs = []
+            
+            if let snapshot = snapshot.children.allObjects as? [FIRDataSnapshot] {
+                for snap in snapshot {
+                    if let postDict = snap.value as? [String: AnyObject] {
+                        let message = Message(msgId: snap.key, msgData: postDict)
+                        self.msgs.append(message)
+                        //self.msgs.insert(message, at: 0)
+                    }
+                }
+            }
+            self.tableView.reloadData()
+        })
     }
     
     func numberOfSections(in tableView: UITableView) -> Int {
@@ -46,6 +61,18 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     
 
     @IBAction func sendBtnTapped(_ sender: Any) {
+        if let msgText = msgField.text , !msgText.isEmpty {
+            let msg = [
+                "text": msgText,
+                "postedDate": FIRServerValue.timestamp()
+            ] as [String : Any]
+        let fireMsg = DataService.ds.MSGS_DB_REF.childByAutoId()
+            fireMsg.setValue(msg)
+            
+            msgField.text = ""
+            tableView.reloadData()
+            
+        }
     }
 
 }
